@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Input } from "@/components/ui/input"
@@ -6,13 +7,33 @@ import { Link, useNavigate } from "react-router-dom"
 import { MainNav } from "@/components/MainNav"
 import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline"
 import { authService } from "@/services/authService"
+import { deviceService } from "@/services/deviceService"
 
 export default function NewDevice() {
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    deviceName: '',
+    apiKey: '',
+    description: ''
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // Backend implementation will go here
+    setLoading(true)
+
+    try {
+      await deviceService.addDevice({
+        name: formData.deviceName,
+        apiKey: formData.apiKey,
+        description: formData.description
+      })
+      navigate('/devices')
+    } catch (error) {
+      console.error('Failed to register device:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleLogout = () => {
@@ -52,6 +73,8 @@ export default function NewDevice() {
                   id="deviceName" 
                   placeholder="e.g., My Pixel 6"
                   required 
+                  value={formData.deviceName}
+                  onChange={(e) => setFormData({ ...formData, deviceName: e.target.value })}
                 />
               </div>
 
@@ -62,6 +85,8 @@ export default function NewDevice() {
                   type="password"
                   placeholder="Enter your API key"
                   required 
+                  value={formData.apiKey}
+                  onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                 />
                 <p className="text-sm text-muted-foreground">
                   You can find your API key in the API Keys section
@@ -73,12 +98,24 @@ export default function NewDevice() {
                 <Input 
                   id="description" 
                   placeholder="Brief description of the device"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                <DevicePhoneMobileIcon className="h-4 w-4 mr-2" />
-                Register Device
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span>Registering...</span>
+                ) : (
+                  <>
+                    <DevicePhoneMobileIcon className="h-4 w-4 mr-2" />
+                    Register Device
+                  </>
+                )}
               </Button>
             </form>
           </div>
@@ -87,9 +124,10 @@ export default function NewDevice() {
             <h3 className="font-medium mb-2">How to connect your device:</h3>
             <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
               <li>Install the SMSBridge app on your Android device</li>
-              <li>Open the app and enter your API key</li>
+              <li>Generate an API key from the Devices page</li>
+              <li>Enter the API key in the mobile app</li>
               <li>Give the required permissions to the app</li>
-              <li>Your device will appear here once connected</li>
+              <li>Register the device here with the same API key</li>
             </ol>
           </div>
         </div>

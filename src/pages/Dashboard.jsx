@@ -22,21 +22,19 @@ import {
   ResponsiveContainer
 } from 'recharts'
 import { authService } from '@/services/authService'
-
-const analyticsData = [
-  { time: '00:00', messages: 12 },
-  { time: '03:00', messages: 8 },
-  { time: '06:00', messages: 15 },
-  { time: '09:00', messages: 45 },
-  { time: '12:00', messages: 68 },
-  { time: '15:00', messages: 80 },
-  { time: '18:00', messages: 55 },
-  { time: '21:00', messages: 25 }
-]
+import { deviceService } from '@/services/deviceService'
+import { messageService } from '@/services/messageService'
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null)
   const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+  const [devices, setDevices] = useState([])
+  const [messageStats, setMessageStats] = useState({
+    sentCount: 0,
+    successRate: '0%',
+    hourlyActivity: []
+  })
+  const [recentActivity, setRecentActivity] = useState([])
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -51,6 +49,60 @@ export default function Dashboard() {
     fetchUserData()
   }, [])
 
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch devices
+        const devicesData = await deviceService.getDevices()
+        setDevices(devicesData)
+
+        // Fetch messages and calculate stats
+        const messages = await messageService.getMessages()
+        
+        const sentMessages = messages.filter(msg => 
+          msg.type === 'outbound'
+        )
+
+        const deliveredMessages = messages.filter(msg => 
+          msg.status === 'delivered'
+        )
+
+        const successRate = messages.length > 0 
+          ? ((deliveredMessages.length / messages.length) * 100).toFixed(1)
+          : 100
+
+        // Calculate hourly activity
+        const hourlyData = messages.reduce((acc, msg) => {
+          const hour = new Date(msg.createdAt).getHours()
+          acc[hour] = (acc[hour] || 0) + 1
+          return acc
+        }, {})
+
+        const hourlyActivity = Array.from({ length: 24 }, (_, i) => ({
+          time: `${i.toString().padStart(2, '0')}:00`,
+          messages: hourlyData[i] || 0
+        }))
+
+        setMessageStats({
+          sentCount: sentMessages.length,
+          successRate: `${successRate}%`,
+          hourlyActivity
+        })
+
+        // Get recent activity
+        const recent = messages
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 10)
+        setRecentActivity(recent)
+
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
   const handleLogout = () => {
     authService.logout()
     navigate('/login')
@@ -58,7 +110,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
       <nav className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -72,9 +123,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">
@@ -85,12 +134,10 @@ export default function Dashboard() {
             </p>
           </div>
           <Button onClick={() => navigate('/messages/new')}>
-  New Message <ArrowRightIcon className="ml-2 h-4 w-4" />
-</Button>
-
+            New Message <ArrowRightIcon className="ml-2 h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="pt-6">
@@ -98,7 +145,7 @@ export default function Dashboard() {
                 <PhoneIcon className="h-5 w-5" />
                 <span>Active Devices</span>
               </div>
-              <div className="text-2xl font-bold">3</div>
+              <div className="text-2xl font-bold">{devices.length}</div>
             </CardContent>
           </Card>
 
@@ -106,9 +153,9 @@ export default function Dashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 text-muted-foreground mb-4">
                 <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                <span>Messages Today</span>
+                <span>Messages Sent</span>
               </div>
-              <div className="text-2xl font-bold">147</div>
+              <div className="text-2xl font-bold">{messageStats.sentCount}</div>
             </CardContent>
           </Card>
 
@@ -118,7 +165,7 @@ export default function Dashboard() {
                 <ChartBarIcon className="h-5 w-5" />
                 <span>Success Rate</span>
               </div>
-              <div className="text-2xl font-bold">99.8%</div>
+              <div className="text-2xl font-bold">{messageStats.successRate}</div>
             </CardContent>
           </Card>
 
@@ -133,7 +180,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Analytics Chart */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Message Activity</CardTitle>
@@ -141,7 +187,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={analyticsData}>
+                <LineChart data={messageStats.hourlyActivity}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis 
                     dataKey="time"
@@ -173,7 +219,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">Recent Activity</h2>
           <Card>
@@ -188,24 +233,18 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr>
-                    <td className="py-3">2024-01-11 14:23</td>
-                    <td>Pixel 6</td>
-                    <td>Outbound SMS</td>
-                    <td><span className="text-green-500">Delivered</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3">2024-01-11 14:20</td>
-                    <td>Galaxy S21</td>
-                    <td>Inbound SMS</td>
-                    <td><span className="text-green-500">Received</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3">2024-01-11 14:15</td>
-                    <td>OnePlus 9</td>
-                    <td>Outbound SMS</td>
-                    <td><span className="text-yellow-500">Pending</span></td>
-                  </tr>
+                  {recentActivity.map(activity => (
+                    <tr key={activity.id}>
+                      <td className="py-3">{new Date(activity.createdAt).toLocaleString()}</td>
+                      <td>{activity.deviceId}</td>
+                      <td>{activity.type}</td>
+                      <td>
+                        <span className={`text-${activity.status === 'delivered' ? 'green' : 'yellow'}-500`}>
+                          {activity.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </CardContent>

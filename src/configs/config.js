@@ -12,3 +12,21 @@
     DELETE_ACCOUNT: '/user/account',
     UPDATE_PROFILE: '/user/update-profile',
   };
+
+  export const DEVICE_ENDPOINTS = {
+    GET_ALL: '/devices',
+    GET_API_KEYS: '/devices/api-keys',
+    CREATE: '/devices',
+    UPDATE: (id) => `/devices/${id}`,
+    DELETE: (id) => `/devices/${id}`,
+    GENERATE_KEY: '/devices/generate-key',
+    REVOKE_KEY: '/devices/revoke-key'
+};
+
+export const MESSAGE_ENDPOINTS = {
+    GET_ALL: '/messages',
+    SEND: '/messages',
+    UPDATE_STATUS: (id) => `/messages/${id}/status`,
+    DELETE: (id) => `/messages/${id}`,
+    SYNC: '/messages/sync'
+};

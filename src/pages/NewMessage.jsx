@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Input } from "@/components/ui/input"
@@ -8,13 +9,48 @@ import { Link, useNavigate } from "react-router-dom"
 import { MainNav } from "@/components/MainNav"
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline"
 import { authService } from "@/services/authService"
+import { deviceService } from "@/services/deviceService"
+import { messageService } from "@/services/messageService"
 
 export default function NewMessage() {
   const navigate = useNavigate()
+  const [devices, setDevices] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    deviceId: '',
+    recipient: '',
+    content: ''
+  })
+
+  useEffect(() => {
+    fetchDevices()
+  }, [])
+
+  const fetchDevices = async () => {
+    try {
+      const devicesData = await deviceService.getDevices()
+      setDevices(devicesData.filter(device => device.status === 'active'))
+    } catch (error) {
+      console.error('Failed to fetch devices:', error)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // Backend implementation will go here
+    setLoading(true)
+
+    try {
+      await messageService.sendMessage({
+        deviceId: formData.deviceId,
+        recipient: formData.recipient,
+        content: formData.content
+      })
+      navigate('/messages')
+    } catch (error) {
+      console.error('Failed to send message:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleLogout = () => {
@@ -49,15 +85,26 @@ export default function NewMessage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="device">Select Device</Label>
-              <Select>
+              <Select
+                value={formData.deviceId}
+                onValueChange={(value) => setFormData({ ...formData, deviceId: value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a device" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="device1">Pixel 6</SelectItem>
-                  <SelectItem value="device2">Galaxy S21</SelectItem>
+                  {devices.map(device => (
+                    <SelectItem key={device.id} value={device.id}>
+                      {device.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {devices.length === 0 && (
+                <p className="text-sm text-yellow-500">
+                  No active devices found. Please add a device first.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -67,8 +114,12 @@ export default function NewMessage() {
                 type="tel" 
                 placeholder="+251912345678"
                 required 
+                value={formData.recipient}
+                onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
               />
-              <p className="text-sm text-muted-foreground">Enter phone number in international format</p>
+              <p className="text-sm text-muted-foreground">
+                Enter phone number in international format
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -78,12 +129,24 @@ export default function NewMessage() {
                 placeholder="Type your message here" 
                 required
                 className="min-h-[150px]"
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-              Send Message
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || !formData.deviceId}
+            >
+              {loading ? (
+                <span>Sending...</span>
+              ) : (
+                <>
+                  <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                  Send Message
+                </>
+              )}
             </Button>
           </form>
         </div>
