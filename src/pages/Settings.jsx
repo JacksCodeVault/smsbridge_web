@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { MainNav } from "@/components/MainNav"
+import { authService } from '@/services/authService'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,20 @@ import {
 } from "@/components/ui/dialog"
 
 export default function Settings() {
+  const navigate = useNavigate()
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm('Are you sure? This action cannot be undone.')) {
+      try {
+        await authService.deleteAccount()
+        authService.logout(); // Terminate session
+        navigate('/login')
+      } catch (error) {
+        console.error('Failed to delete account:', error)
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b">
@@ -86,10 +101,7 @@ export default function Settings() {
                       <Button variant="outline">Cancel</Button>
                       <Button 
                         variant="destructive"
-                        onClick={() => {
-                          // Handle account deletion
-                          console.log("Account deletion confirmed")
-                        }}
+                        onClick={handleDeleteAccount}
                       >
                         Delete Account
                       </Button>

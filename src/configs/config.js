@@ -9,4 +9,6 @@
 
   export const USER_ENDPOINTS = {
     GET_PROFILE: '/user/profile',
+    DELETE_ACCOUNT: '/user/account',
+    UPDATE_PROFILE: '/user/update-profile',
   };

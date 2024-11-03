@@ -61,5 +61,11 @@ export const authService = {
   getUserData() {
     const userData = localStorage.getItem('user');
     return userData ? JSON.parse(userData) : null;
-  }
+  },
+
+  async deleteAccount() {
+    await api.delete(USER_ENDPOINTS.DELETE_ACCOUNT);
+    this.logout();
+}
+
 };
