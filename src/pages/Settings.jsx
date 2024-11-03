@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Link, useNavigate } from "react-router-dom"
@@ -12,9 +13,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function Settings() {
   const navigate = useNavigate()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
 
   const handleDeleteAccount = async () => {
     if (window.confirm('Are you sure? This action cannot be undone.')) {
@@ -25,6 +32,21 @@ export default function Settings() {
       } catch (error) {
         console.error('Failed to delete account:', error)
       }
+    }
+  }
+
+  const handlePasswordUpdate = async () => {
+    if (newPassword !== confirmPassword) {
+      return // Add error handling for password mismatch
+    }
+
+    try {
+      await authService.updatePassword(currentPassword, newPassword)
+      setIsPasswordModalOpen(false)
+      // Add success notification
+    } catch (error) {
+      console.error('Failed to update password:', error)
+      // Add error notification
     }
   }
 
@@ -59,7 +81,60 @@ export default function Settings() {
                 <div>
                   <h3 className="font-medium mb-2">Change Password</h3>
                   <p className="text-muted-foreground mb-2">Update your account password</p>
-                  <Button variant="outline">Update</Button>
+                  <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Update Password</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Update Password</DialogTitle>
+                        <DialogDescription>
+                          Enter your current password and choose a new one
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword">Current Password</Label>
+                          <Input
+                            id="currentPassword"
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword">New Password</Label>
+                          <Input
+                            id="newPassword"
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                          <Input
+                            id="confirmPassword"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handlePasswordUpdate}>
+                          Update Password
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             </div>

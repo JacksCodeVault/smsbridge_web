@@ -4,28 +4,32 @@ import { authService } from '@/services/authService'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      setError('')
       await authService.login(email, password)
       navigate('/dashboard')
     } catch (error) {
-      console.error('Login failed:', error)
+      setError(error.response?.data?.error || 'Login failed. Please try again.')
     }
   }
 
   const handleGoogleSignIn = async () => {
     try {
-      await authService.googleLogin();
-      navigate('/dashboard');
+      setError('')
+      await authService.googleLogin()
+      navigate('/dashboard')
     } catch (error) {
-      console.error('Google sign-in failed:', error);
+      setError(error.response?.data?.error || 'Google sign-in failed. Please try again.')
     }
   }
 
@@ -38,6 +42,12 @@ export default function Login() {
             Sign in to your SMS Bridge account
           </p>
         </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
