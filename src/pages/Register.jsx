@@ -2,12 +2,39 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Link } from "react-router-dom"
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { authService } from '@/services/authService'
 
 export default function Register() {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const navigate = useNavigate()
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await authService.register(firstName, lastName, email, password)
+      navigate('/login')
+    } catch (error) {
+      console.error('Registration failed:', error)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await authService.googleLogin();
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Google sign-in failed:', error);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50">
       <div className="w-full max-w-md space-y-8 p-8 bg-background rounded-lg shadow-lg">
-        {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Create an Account</h1>
           <p className="text-muted-foreground">
@@ -15,22 +42,51 @@ export default function Register() {
           </p>
         </div>
 
-        {/* Registration Form */}
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="John Doe" required />
+              <Label htmlFor="firstName">First Name</Label>
+              <Input 
+                id="firstName" 
+                placeholder="John" 
+                required 
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input 
+                id="lastName" 
+                placeholder="Doe" 
+                required 
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="john@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="john@example.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required />
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
           </div>
 
@@ -39,7 +95,6 @@ export default function Register() {
           </Button>
         </form>
 
-        {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t"></div>
@@ -51,11 +106,10 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Social Login */}
         <Button 
           variant="outline" 
           className="w-full"
-          onClick={() => {/* Google sign-in handler */}}
+          onClick={handleGoogleSignIn}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -78,7 +132,6 @@ export default function Register() {
           Continue with Google
         </Button>
 
-        {/* Login Link */}
         <div className="text-center text-sm">
           Already have an account?{" "}
           <Link to="/login" className="font-medium text-primary hover:underline">

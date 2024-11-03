@@ -1,4 +1,4 @@
-  import { Routes, Route } from 'react-router-dom'
+  import { Routes, Route, Navigate } from 'react-router-dom'
   import Landing from '@/pages/Landing'
   import Dashboard from '@/pages/Dashboard'
   import Devices from '@/pages/Devices'
@@ -12,20 +12,55 @@
   import NewDevice from '@/pages/NewDevice'
   import NotFound from '@/pages/NotFound'
 
+  const ProtectedRoute = ({ children }) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      return <Navigate to="/login" />
+    }
+    return children
+  }
+
   export default function AppRoutes() {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/devices" element={<Devices />} />
-        <Route path="/messages" element={<Messages />} />
-        <Route path="/settings" element={<Settings />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/learn-more" element={<LearnMore />} />
-        <Route path="/messages/new" element={<NewMessage />} />
-        <Route path="/devices/new" element={<NewDevice />} />
+      
+        {/* Protected Routes */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/devices" element={
+          <ProtectedRoute>
+            <Devices />
+          </ProtectedRoute>
+        } />
+        <Route path="/messages" element={
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } />
+        <Route path="/messages/new" element={
+          <ProtectedRoute>
+            <NewMessage />
+          </ProtectedRoute>
+        } />
+        <Route path="/devices/new" element={
+          <ProtectedRoute>
+            <NewDevice />
+          </ProtectedRoute>
+        } />
+      
         <Route path="*" element={<NotFound />} />
       </Routes>
     )

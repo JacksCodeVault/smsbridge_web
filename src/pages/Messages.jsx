@@ -1,10 +1,18 @@
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline"
 import { MainNav } from "@/components/MainNav"
+import { authService } from "@/services/authService"
 
 export default function Messages() {
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    authService.logout()
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b">
@@ -15,7 +23,7 @@ export default function Messages() {
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="outline" size="sm">Logout</Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
           </div>
         </div>
       </nav>

@@ -1,13 +1,37 @@
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { authService } from '@/services/authService'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Link } from "react-router-dom"
 
 export default function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const navigate = useNavigate()
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await authService.login(email, password)
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Login failed:', error)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await authService.googleLogin();
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Google sign-in failed:', error);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50">
       <div className="w-full max-w-md space-y-8 p-8 bg-background rounded-lg shadow-lg">
-        {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Welcome Back</h1>
           <p className="text-muted-foreground">
@@ -15,17 +39,29 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Login Form */}
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="john@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="john@example.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required />
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
           </div>
 
@@ -44,7 +80,6 @@ export default function Login() {
           </Button>
         </form>
 
-        {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t"></div>
@@ -56,11 +91,10 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Social Login */}
         <Button 
           variant="outline" 
           className="w-full"
-          onClick={() => {/* Google sign-in handler */}}
+          onClick={handleGoogleSignIn}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -83,7 +117,6 @@ export default function Login() {
           Continue with Google
         </Button>
 
-        {/* Register Link */}
         <div className="text-center text-sm">
           Don't have an account?{" "}
           <Link to="/register" className="font-medium text-primary hover:underline">

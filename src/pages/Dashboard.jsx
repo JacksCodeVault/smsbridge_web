@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useNavigate } from 'react-router-dom'
 import { 
   PhoneIcon, 
   ChatBubbleLeftRightIcon,
@@ -19,6 +21,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts'
+import { authService } from '@/services/authService'
 
 const analyticsData = [
   { time: '00:00', messages: 12 },
@@ -32,6 +35,27 @@ const analyticsData = [
 ]
 
 export default function Dashboard() {
+  const [user, setUser] = useState(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await authService.getCurrentUser()
+        setUser(userData)
+      } catch (error) {
+        console.error('Failed to fetch user data:', error)
+      }
+    }
+
+    fetchUserData()
+  }, [])
+
+  const handleLogout = () => {
+    authService.logout()
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -43,7 +67,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="outline" size="sm">Logout</Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
           </div>
         </div>
       </nav>
@@ -53,12 +77,17 @@ export default function Dashboard() {
         {/* Welcome Section */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Welcome back, User</h1>
-            <p className="text-muted-foreground">Here's what's happening with your messages</p>
+            <h1 className="text-3xl font-bold">
+              Welcome back, {user?.firstName || 'User'}
+            </h1>
+            <p className="text-muted-foreground">
+              Here's what's happening with your messages
+            </p>
           </div>
-          <Button>
-            New Message <ArrowRightIcon className="ml-2 h-4 w-4" />
-          </Button>
+          <Button onClick={() => navigate('/messages/new')}>
+  New Message <ArrowRightIcon className="ml-2 h-4 w-4" />
+</Button>
+
         </div>
 
         {/* Stats Grid */}

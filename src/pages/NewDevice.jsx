@@ -2,14 +2,22 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { MainNav } from "@/components/MainNav"
 import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline"
+import { authService } from "@/services/authService"
 
 export default function NewDevice() {
+  const navigate = useNavigate()
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     // Backend implementation will go here
+  }
+
+  const handleLogout = () => {
+    authService.logout()
+    navigate('/login')
   }
 
   return (
@@ -22,7 +30,7 @@ export default function NewDevice() {
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="outline" size="sm">Logout</Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
           </div>
         </div>
       </nav>
