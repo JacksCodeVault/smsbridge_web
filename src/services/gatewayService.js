@@ -1,33 +1,36 @@
-import httpClient from '../lib/httpClient'
+import { deviceAPI, messageAPI } from '@/lib/api'
 
-export const gatewayService = {
-    generateApiKey: () => 
-        httpClient.post('/devices/generate-key'),
-    
-    getApiKeyList: () => 
-        httpClient.get('/devices/api-keys'),
-    
-    revokeApiKey: (keyId) => 
-        httpClient.post('/devices/revoke-key', { keyId }),
-    
-    getDeviceList: () => 
-        httpClient.get('/devices'),
-    
-    addDevice: (deviceData) =>
-        httpClient.post('/devices', deviceData),
-    
-    updateDevice: (deviceId, data) =>
-        httpClient.put(`/devices/${deviceId}`, data),
-    
-    deleteDevice: (deviceId) => 
-        httpClient.delete(`/devices/${deviceId}`),
-    
-    updateDeviceStatus: (deviceId, status) =>
-        httpClient.put(`/devices/${deviceId}/status`, { status }),
-    
-    verifyConnection: (deviceId) =>
-        httpClient.post(`/devices/${deviceId}/heartbeat`),
-    
-    syncDeviceMessages: (deviceId, messages) =>
-        httpClient.post(`/devices/${deviceId}/sync`, { messages })
+class GatewayService {
+    async getDeviceList() {
+        return deviceAPI.getDevices()
+    }
+
+    async getApiKeyList() {
+        return deviceAPI.getApiKeys()
+    }
+
+    async generateApiKey() {
+        return deviceAPI.generateApiKey()
+    }
+
+    async deleteApiKey(keyId) {
+        return deviceAPI.revokeApiKey(keyId)
+    }
+
+    async sendSMS(deviceId, messageData) {
+        return messageAPI.sendMessage({
+            deviceId,
+            ...messageData
+        })
+    }
+
+    async linkDevice(deviceData) {
+        return deviceAPI.addDevice(deviceData)
+    }
+
+    async updateDeviceStatus(deviceId, status) {
+        return deviceAPI.updateStatus(deviceId, status)
+    }
 }
+
+export default new GatewayService()

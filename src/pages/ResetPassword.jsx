@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { authService } from '@/services/authService'
+import authService from '@/services/authService'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, ArrowLeft } from 'lucide-react'
 
@@ -32,7 +32,7 @@ export default function ResetPassword() {
     } catch (error) {
       toast({
         title: "Request failed",
-        description: error.response?.data?.message || "Failed to send reset code",
+        description: error.message || "Failed to send reset code",
         variant: "destructive"
       })
     } finally {
@@ -67,7 +67,7 @@ export default function ResetPassword() {
     } catch (error) {
       toast({
         title: "Reset failed",
-        description: error.response?.data?.message || "Failed to reset password",
+        description: error.message || "Failed to reset password",
         variant: "destructive"
       })
     } finally {

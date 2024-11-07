@@ -1,26 +1,44 @@
-export class WebSocketManager {
-    constructor(deviceId) {
-        this.ws = new WebSocket(`${import.meta.env.VITE_WS_URL}?deviceId=${deviceId}`);
-        this.messageHandlers = new Set();
-        this.setupEventHandlers();
+class WebSocketService {
+    constructor() {
+      this.ws = null
+      this.messageHandlers = new Set()
     }
-
-    setupEventHandlers() {
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this.messageHandlers.forEach(handler => handler(data));
-        };
+  
+    connect() {
+      this.ws = new WebSocket('ws://localhost:3000')
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket Connected')
+      }
+  
+      this.ws.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        this.messageHandlers.forEach(handler => handler(data))
+      }
+  
+      this.ws.onclose = () => {
+        console.log('WebSocket Disconnected')
+        setTimeout(() => this.connect(), 5000)
+      }
     }
-
-    addMessageHandler(handler) {
-        this.messageHandlers.add(handler);
-    }
-
-    removeMessageHandler(handler) {
-        this.messageHandlers.delete(handler);
-    }
-
+  
     disconnect() {
-        this.ws.close();
+      if (this.ws) {
+        this.ws.close()
+      }
     }
-}
+  
+    onMessage(handler) {
+      this.messageHandlers.add(handler)
+      return () => this.messageHandlers.delete(handler)
+    }
+  
+    send(data) {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(data))
+      }
+    }
+  }
+  
+  export const websocketService = new WebSocketService()
+  

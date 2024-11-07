@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
-import { authService } from "@/services/authService";
+import authService from "@/services/authService";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,8 @@ import {
 export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     avatar: "",
@@ -48,38 +49,53 @@ export default function Profile() {
 
   const loadProfile = async () => {
     try {
-      const response = await authService.getProfile();
-      setProfileData(response.data);
+      const user = authService.getCurrentUser();
+      setProfileData({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone || "",
+        avatar: user.avatar || "",
+        notifications: user.notifications || {
+          email: true,
+          sms: false,
+          push: true
+        }
+      });
     } catch (error) {
       toast({
         title: "Error loading profile",
-        description:
-          error.response?.data?.message || "Failed to load profile data",
+        description: error.message || "Failed to load profile data",
         variant: "destructive"
       });
     }
   };
 
   const handleProfileUpdate = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     try {
-      setLoading(true);
-      await authService.updateProfile(profileData);
-      toast({
-        title: "Success",
-        description: "Profile updated successfully"
-      });
+        setLoading(true)
+        console.log('Profile: Updating with data:', profileData)
+        await authService.updateProfile({
+            firstName: profileData.firstName,
+            lastName: profileData.lastName,
+            phone: profileData.phone
+        })
+        toast({
+            title: "Success",
+            description: "Profile updated successfully"
+        })
     } catch (error) {
-      toast({
-        title: "Update failed",
-        description:
-          error.response?.data?.message || "Failed to update profile",
-        variant: "destructive"
-      });
+        console.error('Profile update failed:', error)
+        toast({
+            title: "Update failed",
+            description: error.message || "Failed to update profile",
+            variant: "destructive"
+        })
     } finally {
-      setLoading(false);
+        setLoading(false)
     }
-  };
+}
 
   const handlePasswordUpdate = async (e) => {
     e.preventDefault();
@@ -94,7 +110,10 @@ export default function Profile() {
 
     try {
       setLoading(true);
-      await authService.updatePassword(password);
+      await authService.updatePassword({
+        currentPassword: password.current,
+        newPassword: password.new
+      });
       toast({
         title: "Success",
         description: "Password updated successfully"
@@ -103,8 +122,7 @@ export default function Profile() {
     } catch (error) {
       toast({
         title: "Update failed",
-        description:
-          error.response?.data?.message || "Failed to update password",
+        description: error.message || "Failed to update password",
         variant: "destructive"
       });
     } finally {
@@ -114,21 +132,22 @@ export default function Profile() {
 
   const handleDeleteAccount = async () => {
     try {
-      await authService.deleteAccount();
-      toast({
-        title: "Account deleted",
-        description: "Your account has been permanently deleted"
-      });
-      window.location.href = "/";
+        console.log('Profile: Initiating account deletion')
+        await authService.deleteAccount()
+        toast({
+            title: "Account deleted",
+            description: "Your account has been permanently deleted"
+        })
+        // AuthService.logout() will handle the redirect
     } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to delete account",
-        variant: "destructive"
-      });
+        console.error('Account deletion failed:', error)
+        toast({
+            title: "Error",
+            description: error.message || "Failed to delete account",
+            variant: "destructive"
+        })
     }
-  };
+}
 
   return (
     <>
@@ -141,20 +160,14 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="flex items-center gap-6">
               <Avatar className="h-24 w-24">
-                <AvatarImage
-                  src={profileData.avatar || "https://github.com/shadcn.png"}
-                />
+                <AvatarImage src={profileData.avatar} />
                 <AvatarFallback>
-                  {profileData.name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase() || "JD"}
+                  {`${profileData.firstName?.[0]}${profileData.lastName?.[0]}`}
                 </AvatarFallback>
               </Avatar>
 
               <div>
-                <h2 className="text-2xl font-bold">{profileData.name}</h2>
+                <h2 className="text-2xl font-bold">{`${profileData.firstName} ${profileData.lastName}`}</h2>
                 <p className="text-muted-foreground">{profileData.email}</p>
               </div>
             </CardContent>
@@ -175,13 +188,13 @@ export default function Profile() {
                 <CardContent className="pt-6">
                   <form onSubmit={handleProfileUpdate} className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Full Name</Label>
+                      <Label>First Name</Label>
                       <Input
-                        value={profileData.name}
+                        value={profileData.firstName}
                         onChange={(e) =>
                           setProfileData({
                             ...profileData,
-                            name: e.target.value
+                            firstName: e.target.value
                           })
                         }
                         disabled={loading}
@@ -189,14 +202,13 @@ export default function Profile() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Email</Label>
+                      <Label>Last Name</Label>
                       <Input
-                        type="email"
-                        value={profileData.email}
+                        value={profileData.lastName}
                         onChange={(e) =>
                           setProfileData({
                             ...profileData,
-                            email: e.target.value
+                            lastName: e.target.value
                           })
                         }
                         disabled={loading}

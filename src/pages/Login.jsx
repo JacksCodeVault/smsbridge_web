@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { authService } from '@/services/authService'
+import authService from '@/services/authService'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
 
@@ -21,26 +21,28 @@ export default function Login() {
     
     try {
       setLoading(true)
-      await authService.login({
-        email: formData.email,
-        password: formData.password
-      })
+      console.log('Login attempt with:', { email: formData.email })
+      
+      const response = await authService.login(formData.email, formData.password)
+      console.log('Login successful:', response)
+      
       toast({
-        title: "Success",
+        title: "Welcome back!",
         description: "Login successful",
       })
-      navigate('/dashboard')
+      navigate('/dashboard', { replace: true })
     } catch (error) {
+      console.error('Login failed:', error)
       toast({
         title: "Login failed",
-        description: error.response?.data?.message || "Invalid credentials",
+        description: error.message || "Invalid credentials",
         variant: "destructive"
       })
     } finally {
       setLoading(false)
     }
-  }
-
+}
+ 
   return (
     <div className="container mx-auto p-6 flex items-center justify-center min-h-screen">
       <Card className="w-full max-w-md p-6">

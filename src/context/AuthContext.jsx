@@ -1,47 +1,50 @@
   import { createContext, useContext, useState, useEffect } from 'react'
-  import { authService } from '@/services/authService'
+  import authService from '@/services/authService'
   import { getStoredUser } from '@/utils/helpers'
   import { toast } from '@/components/ui/use-toast'
 
   const AuthContext = createContext()
 
   export function AuthProvider({ children }) {
-    const [user, setUser] = useState(getStoredUser())
-    const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-      checkAuth()
-    }, [])
-
-    const checkAuth = async () => {
-      try {
-        const response = await authService.whoAmI()
-        setUser(response.data)
-      } catch (error) {
-        setUser(null)
-      } finally {
-        setLoading(false)
-      }
+  useEffect(() => {
+    const initialUser = getStoredUser()
+    if (initialUser) {
+      setUser(initialUser)
     }
+    setLoading(false)
+  }, [])
 
-    const login = async (credentials) => {
-      try {
-        const response = await authService.login(credentials)
-        setUser(response.data.user)
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in"
-        })
-        return response
-      } catch (error) {
-        toast({
-          title: "Login failed",
-          description: error.response?.data?.message || "Invalid credentials",
-          variant: "destructive"
-        })
-        throw error
-      }
+  // Remove the automatic redirect in checkAuth
+  const checkAuth = async () => {
+    try {
+      const response = await authService.whoAmI()
+      setUser(response.data)
+    } catch (error) {
+      setUser(null)
     }
+  }
+  const login = async (credentials) => {
+    try {
+      const response = await authService.login(credentials)
+      setUser(response.user)
+      toast({
+        title: "Welcome back!",
+        description: "Successfully logged in"
+      })
+      return response
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive"
+      })
+      throw error
+    }
+  }
+  
 
     const register = async (userData) => {
       try {

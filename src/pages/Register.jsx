@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { authService } from '@/services/authService'
+import authService from '@/services/authService'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
 
@@ -12,7 +12,8 @@ export default function Register() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -22,6 +23,7 @@ export default function Register() {
     e.preventDefault()
     
     if (formData.password !== formData.confirmPassword) {
+      console.log('Password validation failed: Passwords do not match')
       toast({
         title: "Error",
         description: "Passwords do not match",
@@ -32,27 +34,37 @@ export default function Register() {
 
     try {
       setLoading(true)
-      await authService.register({
-        name: formData.name,
+      console.log('Sending registration request with data:', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         password: formData.password
       })
+      
+      const response = await authService.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password
+      })
+      
+      console.log('Registration successful:', response)
       toast({
         title: "Success",
         description: "Registration successful",
       })
       navigate('/dashboard')
     } catch (error) {
+      console.error('Registration failed:', error)
       toast({
         title: "Registration failed",
-        description: error.response?.data?.message || "Something went wrong",
+        description: error.message || "Something went wrong",
         variant: "destructive"
       })
     } finally {
       setLoading(false)
     }
   }
-
   return (
     <div className="container mx-auto p-6 flex items-center justify-center min-h-screen">
       <Card className="w-full max-w-md p-6">
@@ -60,14 +72,26 @@ export default function Register() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Name</Label>
+            <Label>First Name</Label>
             <Input
               type="text"
               required
               disabled={loading}
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
-              placeholder="Enter your full name"
+              value={formData.firstName}
+              onChange={(e) => setFormData(prev => ({...prev, firstName: e.target.value}))}
+              placeholder="Enter your first name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Last Name</Label>
+            <Input
+              type="text"
+              required
+              disabled={loading}
+              value={formData.lastName}
+              onChange={(e) => setFormData(prev => ({...prev, lastName: e.target.value}))}
+              placeholder="Enter your last name"
             />
           </div>
 
@@ -122,17 +146,6 @@ export default function Register() {
             )}
           </Button>
         </form>
-
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          By registering, you agree to our{' '}
-          <Link to="/terms" className="text-primary hover:underline">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link to="/privacy" className="text-primary hover:underline">
-            Privacy Policy
-          </Link>
-        </div>
 
         <div className="mt-6 text-center">
           <Link to="/login" className="text-sm text-primary hover:underline">

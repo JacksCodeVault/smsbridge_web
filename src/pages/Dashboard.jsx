@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { useGateway } from "@/context/GatewayContext"
 import { toast } from "@/components/ui/use-toast"
-import { Loader2, Smartphone, Key, Send, MessageSquare } from "lucide-react"
+import { Eye, EyeOff, Copy, Key, Loader2, Smartphone, Send, MessageSquare } from "lucide-react"
+import { messageAPI, deviceAPI } from '@/lib/api'
+import statsService from '@/services/statsService'
 import {
   Select,
   SelectContent,
@@ -25,49 +26,149 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { formatDate, validatePhoneNumbers, getStatusColor } from '@/utils/helpers'
 
 export default function Dashboard() {
-  const { 
-    devices, 
-    apiKeys, 
-    stats, 
-    loading,
-    generateApiKey,
-    deleteApiKey,
-    sendSMS,
-    refreshStats 
-  } = useGateway()
-
+  const [loading, setLoading] = useState(true)
+  const [devices, setDevices] = useState([])
+  const [apiKeys, setApiKeys] = useState([])
+  const [messages, setMessages] = useState([])
+  const [stats, setStats] = useState({
+    devices: 0,
+    apiKeys: 0,
+    smsSent: 0,
+    smsReceived: 0
+  })
   const [activeTab, setActiveTab] = useState("devices")
   const [newApiKey, setNewApiKey] = useState(null)
+  const [visibleKeys, setVisibleKeys] = useState({})
   const [sending, setSending] = useState(false)
-  const [smsForm, setSmsForm] = useState({
-    device: '',
+  const [messageForm, setMessageForm] = useState({
+    deviceId: '',
     recipients: '',
-    message: ''
+    content: ''
   })
 
-  // Refresh stats every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(refreshStats, 30000)
-    return () => clearInterval(interval)
-  }, [refreshStats])
-
-  const handleGenerateApiKey = async () => {
+  const loadInitialData = async () => {
     try {
-      const key = await generateApiKey()
-      setNewApiKey(key.value)
+      setLoading(true)
+      const [devicesRes, apiKeysRes, statsRes] = await Promise.all([
+        deviceAPI.getDevices(),
+        deviceAPI.getApiKeys(),
+        statsService.getStats()
+      ])
+      
+      setDevices(devicesRes)
+      setApiKeys(apiKeysRes)
+      setStats(statsRes.data)
     } catch (error) {
-      // Error handling is managed by GatewayContext
+      console.error('Failed to load initial data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleSendSMS = async (e) => {
+  useEffect(() => {
+    loadInitialData()
+  }, [])
+
+  const toggleKeyVisibility = (keyId) => {
+    setVisibleKeys(prev => ({
+      ...prev,
+      [keyId]: !prev[keyId]
+    }))
+  }
+
+  const copyApiKey = (key) => {
+    navigator.clipboard.writeText(key)
+    toast({
+      title: "Success",
+      description: "API key copied to clipboard"
+    })
+  }
+
+  const handleGenerateApiKey = async () => {
+    try {
+      const response = await deviceAPI.generateApiKey()
+      
+      if (response && response.key) {
+        setNewApiKey(response.key)
+        setApiKeys(prev => [...prev, {
+          id: response.id,
+          key: response.key,
+          createdAt: new Date().toISOString(),
+          active: true
+        }])
+        setStats(prev => ({
+          ...prev,
+          apiKeys: prev.apiKeys + 1
+        }))
+        
+        setVisibleKeys(prev => ({
+          ...prev,
+          [response.id]: true
+        }))
+
+        toast({
+          title: "Success",
+          description: "Make sure to copy your API key. You won't be able to see it again!",
+          variant: "warning"
+        })
+      }
+    } catch (error) {
+      console.error('Failed to generate API key:', error)
+      toast({
+        title: "Error",
+        description: "Failed to generate API key",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleRevokeApiKey = async (keyId) => {
+    setApiKeys(prev => prev.map(key => 
+      key.id === keyId ? { ...key, active: false } : key
+    ))
+    setStats(prev => ({
+      ...prev,
+      apiKeys: prev.apiKeys - 1
+    }))
+
+    try {
+      await deviceAPI.revokeApiKey(keyId)
+      toast({
+        title: "Success",
+        description: "API key revoked successfully"
+      })
+    } catch (error) {
+      setApiKeys(prev => prev.map(key => 
+        key.id === keyId ? { ...key, active: true } : key
+      ))
+      setStats(prev => ({
+        ...prev,
+        apiKeys: prev.apiKeys + 1
+      }))
+      toast({
+        title: "Error",
+        description: "Failed to revoke API key",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleSendMessage = async (e) => {
     e.preventDefault()
-    if (!smsForm.device || !smsForm.recipients || !smsForm.message) {
+    const recipients = messageForm.recipients.split(',').map(r => r.trim())
+    
+    if (!validatePhoneNumbers(recipients)) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all fields",
+        description: "Please enter valid phone numbers",
         variant: "destructive"
       })
       return
@@ -75,23 +176,43 @@ export default function Dashboard() {
 
     try {
       setSending(true)
-      await sendSMS(smsForm.device, {
-        recipients: smsForm.recipients.split(',').map(r => r.trim()),
-        message: smsForm.message
+      const messagePayload = {
+        deviceId: messageForm.deviceId,
+        recipients,
+        content: messageForm.content
+      }
+      
+      const response = await messageAPI.sendMessage(messagePayload)
+      
+      setMessages(prev => [response.data, ...prev])
+      setStats(prev => ({
+        ...prev,
+        smsSent: prev.smsSent + 1
+      }))
+      
+      setMessageForm({ deviceId: '', recipients: '', content: '' })
+      toast({
+        title: "Success",
+        description: "Message sent successfully"
       })
-      setSmsForm({ device: '', recipients: '', message: '' })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive"
+      })
     } finally {
       setSending(false)
     }
   }
 
   const StatsSection = () => (
-    <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-4">
       {[
-        { title: 'Total Devices', value: stats?.devices || 0, icon: <Smartphone className="h-4 w-4 text-primary" /> },
-        { title: 'API Keys', value: stats?.apiKeys || 0, icon: <Key className="h-4 w-4 text-primary" /> },
-        { title: 'SMS Sent', value: stats?.smsSent || 0, icon: <Send className="h-4 w-4 text-primary" /> },
-        { title: 'SMS Received', value: stats?.smsReceived || 0, icon: <MessageSquare className="h-4 w-4 text-primary" /> }
+        { title: 'Total Devices', value: stats.devices, icon: <Smartphone className="h-4 w-4 text-primary" /> },
+        { title: 'API Keys', value: stats.apiKeys, icon: <Key className="h-4 w-4 text-primary" /> },
+        { title: 'Messages Sent', value: stats.smsSent, icon: <Send className="h-4 w-4 text-primary" /> },
+        { title: 'Messages Received', value: stats.smsReceived, icon: <MessageSquare className="h-4 w-4 text-primary" /> }
       ].map(({ title, value, icon }) => (
         <Card key={title}>
           <CardContent className="pt-6">
@@ -124,32 +245,38 @@ export default function Dashboard() {
         <StatsSection />
         
         <div className="mt-8">
-          <Tabs defaultValue="devices" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="devices">Devices & API Keys</TabsTrigger>
-              <TabsTrigger value="send">Send SMS</TabsTrigger>
-              <TabsTrigger value="receive">Receive SMS</TabsTrigger>
+              <TabsTrigger value="messages">Messages</TabsTrigger>
             </TabsList>
 
             <TabsContent value="devices">
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardContent className="pt-6">
-                    <h3 className="text-lg font-semibold mb-4">Devices</h3>
+                    <h3 className="text-lg font-semibold mb-4">Connected Devices</h3>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Device</TableHead>
+                          <TableHead>Name</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Device ID</TableHead>
+                          <TableHead>Last Seen</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {devices.map(device => (
                           <TableRow key={device.id}>
                             <TableCell>{device.name}</TableCell>
-                            <TableCell>{device.status}</TableCell>
-                            <TableCell>{device.deviceId}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                device.status === 'online' ? 'bg-green-100 text-green-800' : 
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {device.status}
+                              </span>
+                            </TableCell>
+                            <TableCell>{formatDate(device.lastSeen)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -165,17 +292,48 @@ export default function Dashboard() {
                         Generate New Key
                       </Button>
                     </div>
+                    
                     {newApiKey && (
                       <Alert className="mb-4">
-                        <AlertDescription>
-                          New API Key: {newApiKey}
+                        <AlertDescription className="flex items-center justify-between">
+                          <div className="font-mono">
+                            {visibleKeys['new'] 
+                              ? newApiKey
+                              : `${newApiKey.substring(0, 8)}................................${newApiKey.substring(newApiKey.length - 8)}`
+                            }
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setVisibleKeys(prev => ({
+                                ...prev,
+                                new: !prev.new
+                              }))}
+                            >
+                              {visibleKeys['new'] ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyApiKey(newApiKey)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </AlertDescription>
                       </Alert>
                     )}
+
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>API Key</TableHead>
+                          <TableHead>Key</TableHead>
+                          <TableHead>Created</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -183,15 +341,51 @@ export default function Dashboard() {
                       <TableBody>
                         {apiKeys.map(key => (
                           <TableRow key={key.id}>
-                            <TableCell>{key.value}</TableCell>
-                            <TableCell>{key.status}</TableCell>
+                            <TableCell className="font-mono">
+                              <div className="flex items-center space-x-2">
+                                <span>
+                                  {visibleKeys[key.id] 
+                                    ? key.key
+                                    : `${key.key?.substring(0, 8)}................................${key.key?.substring(key.key?.length - 8)}`
+                                  }
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleKeyVisibility(key.id)}
+                                >
+                                  {visibleKeys[key.id] ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyApiKey(key.key)}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>{formatDate(key.createdAt)}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                key.active ? 'bg-green-100 text-green-800' : 
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {key.active ? 'Active' : 'Revoked'}
+                              </span>
+                            </TableCell>
                             <TableCell>
                               <Button 
                                 variant="destructive" 
                                 size="sm"
-                                onClick={() => deleteApiKey(key.id)}
+                                onClick={() => handleRevokeApiKey(key.id)}
+                                disabled={!key.active}
                               >
-                                Delete
+                                Revoke
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -203,85 +397,91 @@ export default function Dashboard() {
               </div>
             </TabsContent>
 
-            <TabsContent value="send">
-              <Card>
-                <CardContent className="pt-6">
-                  <form onSubmit={handleSendSMS} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Select Device</Label>
-                      <Select
-                        value={smsForm.device}
-                        onValueChange={(value) => setSmsForm({...smsForm, device: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a device..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {devices.map(device => (
-                            <SelectItem key={device.id} value={device.id}>
-                              {device.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+            <TabsContent value="messages">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-semibold mb-4">Send Message</h3>
+                    <form onSubmit={handleSendMessage} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Select Device</Label>
+                        <Select
+                          value={messageForm.deviceId}
+                          onValueChange={(value) => setMessageForm({...messageForm, deviceId: value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a device..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {devices.map(device => (
+                              <SelectItem key={device.id} value={device.id}>
+                                {device.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label>Recipients</Label>
-                      <Input 
-                        placeholder="Enter phone numbers (comma separated)"
-                        value={smsForm.recipients}
-                        onChange={e => setSmsForm({...smsForm, recipients: e.target.value})}
-                      />
-                    </div>
+                      <div className="space-y-2">
+                        <Label>Recipients</Label>
+                        <Input 
+                          placeholder="Enter phone numbers (comma separated)"
+                          value={messageForm.recipients}
+                          onChange={e => setMessageForm({...messageForm, recipients: e.target.value})}
+                        />
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label>Message</Label>
-                      <Textarea 
-                        placeholder="Type your message here..."
-                        value={smsForm.message}
-                        onChange={e => setSmsForm({...smsForm, message: e.target.value})}
-                      />
-                    </div>
+                      <div className="space-y-2">
+                        <Label>Message</Label>
+                        <Textarea 
+                          placeholder="Type your message here..."
+                          value={messageForm.content}
+                          onChange={e => setMessageForm({...messageForm, content: e.target.value})}
+                        />
+                      </div>
 
-                    <Button type="submit" disabled={sending}>
-                      {sending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        'Send SMS'
-                      )}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                      <Button type="submit" disabled={sending}>
+                        {sending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send Message'
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
 
-            <TabsContent value="receive">
-              <Card>
-                <CardContent className="pt-6">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>From</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead>Received At</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats?.recentMessages?.map(sms => (
-                        <TableRow key={sms.id}>
-                          <TableCell>{sms.from}</TableCell>
-                          <TableCell>{sms.message}</TableCell>
-                          <TableCell>{new Date(sms.receivedAt).toLocaleString()}</TableCell>
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-semibold mb-4">Recent Messages</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Recipient</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Sent At</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {messages.map(message => (
+                          <TableRow key={message.id}>
+                            <TableCell>{message.recipient}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(message.status)}`}>
+                                {message.status}
+                              </span>
+                            </TableCell>
+                            <TableCell>{formatDate(message.sentAt)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
