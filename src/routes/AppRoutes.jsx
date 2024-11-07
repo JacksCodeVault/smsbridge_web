@@ -1,67 +1,50 @@
-  import { Routes, Route, Navigate } from 'react-router-dom'
-  import Landing from '@/pages/Landing'
-  import Dashboard from '@/pages/Dashboard'
-  import Devices from '@/pages/Devices'
-  import Messages from '@/pages/Messages'
-  import Settings from '@/pages/Settings'
-  import Login from '@/pages/Login'
-  import Register from '@/pages/Register'
-  import ForgotPassword from '@/pages/ForgotPassword'
-  import LearnMore from '@/pages/LearnMore'
-  import NewMessage from '@/pages/NewMessage'
-  import NewDevice from '@/pages/NewDevice'
-  import NotFound from '@/pages/NotFound'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
+import Landing from "@/pages/Landing"
+import Login from "@/pages/Login"
+import Register from "@/pages/Register"
+import Dashboard from "@/pages/Dashboard"
+import Profile from "@/pages/Profile"
+import ResetPassword from "@/pages/ResetPassword"
+import PrivacyPolicy from "@/pages/PrivacyPolicy"
+import Documentation from "@/pages/Documentation"
+import NotFound from "@/pages/NotFound"
+import Settings from "@/pages/Settings"
 
-  const ProtectedRoute = ({ children }) => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      return <Navigate to="/login" />
-    }
-    return children
-  }
+const PrivateRoute = ({ children }) => {
+  const { user } = useAuth()
+  return user ? children : <Navigate to="/login" />
+}
 
-  export default function AppRoutes() {
-    return (
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/learn-more" element={<LearnMore />} />
-      
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/devices" element={
-          <ProtectedRoute>
-            <Devices />
-          </ProtectedRoute>
-        } />
-        <Route path="/messages" element={
-          <ProtectedRoute>
-            <Messages />
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } />
-        <Route path="/messages/new" element={
-          <ProtectedRoute>
-            <NewMessage />
-          </ProtectedRoute>
-        } />
-        <Route path="/devices/new" element={
-          <ProtectedRoute>
-            <NewDevice />
-          </ProtectedRoute>
-        } />
-      
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    )
-  }
+export default function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/docs" element={<Documentation />} />
+
+      {/* Protected Routes */}
+      <Route path="/dashboard" element={
+        <PrivateRoute>
+          <Dashboard />
+        </PrivateRoute>
+      } />
+      <Route path="/profile" element={
+        <PrivateRoute>
+          <Profile />
+        </PrivateRoute>
+      } />
+      <Route path="/settings" element={
+        <PrivateRoute>
+          <Settings />
+        </PrivateRoute>
+      } />
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  )
+}

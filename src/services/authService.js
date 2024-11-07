@@ -1,71 +1,30 @@
-import api from './api';
-import { AUTH_ENDPOINTS, USER_ENDPOINTS } from '../configs/config';
-import { auth } from '@/configs/firebaseConfig';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import httpClient from '../lib/httpClient'
+import { API_ENDPOINTS } from '../utils/constants'
+import { saveUserAndToken, removeUserAndToken } from '../utils/helpers'
 
 export const authService = {
-  async login(email, password) {
-    const response = await api.post(AUTH_ENDPOINTS.LOGIN, { email, password });
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-    }
-    return response.data;
-  },
-
-  async register(firstName, lastName, email, password) {
-    const response = await api.post(AUTH_ENDPOINTS.REGISTER, {
-      email,
-      password,
-      firstName,
-      lastName
-    });
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-    }
-    return response.data;
-  },
-
-  async googleLogin() {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    const idToken = await result.user.getIdToken();
+    login: async (credentials) => {
+        const response = await httpClient.post(API_ENDPOINTS.AUTH.LOGIN, credentials)
+        saveUserAndToken(response.data.user, response.data.token)
+        return response.data
+    },
     
-    const response = await api.post(AUTH_ENDPOINTS.GOOGLE_LOGIN, { 
-      tokenId: idToken 
-    });
+    register: async (userData) => {
+        const response = await httpClient.post(API_ENDPOINTS.AUTH.REGISTER, userData)
+        saveUserAndToken(response.data.user, response.data.token)
+        return response.data
+    },
     
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
+    resetPassword: async (data) => 
+        httpClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data),
+    
+    requestPasswordReset: async (email) => 
+        httpClient.post(API_ENDPOINTS.AUTH.REQUEST_RESET, { email }),
+    
+    updateProfile: async (profileData) => 
+        httpClient.put(API_ENDPOINTS.AUTH.UPDATE_PROFILE, profileData),
+    
+    logout: () => {
+        removeUserAndToken()
     }
-    return response.data;
-  },
-
-  async forgotPassword(email) {
-    return await api.post(AUTH_ENDPOINTS.FORGOT_PASSWORD, { email });
-  },
-
-  logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  },
-
-  async getCurrentUser() {
-    const response = await api.get(USER_ENDPOINTS.GET_PROFILE);
-    return response.data;
-  },
-
-  setUserData(userData) {
-    localStorage.setItem('user', JSON.stringify(userData));
-  },
-
-  getUserData() {
-    const userData = localStorage.getItem('user');
-    return userData ? JSON.parse(userData) : null;
-  },
-
-  async deleteAccount() {
-    await api.delete(USER_ENDPOINTS.DELETE_ACCOUNT);
-    this.logout();
 }
-
-};

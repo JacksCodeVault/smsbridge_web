@@ -1,100 +1,111 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { authService } from '@/services/authService'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from '@/components/ui/use-toast'
+import { Loader2 } from 'lucide-react'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
     try {
-      setError('')
-      await authService.login(email, password)
+      setLoading(true)
+      await authService.login({
+        email: formData.email,
+        password: formData.password
+      })
+      toast({
+        title: "Success",
+        description: "Login successful",
+      })
       navigate('/dashboard')
     } catch (error) {
-      setError(error.response?.data?.error || 'Login failed. Please try again.')
-    }
-  }
-
-  const handleGoogleSignIn = async () => {
-    try {
-      setError('')
-      await authService.googleLogin()
-      navigate('/dashboard')
-    } catch (error) {
-      setError(error.response?.data?.error || 'Google sign-in failed. Please try again.')
+      toast({
+        title: "Login failed",
+        description: error.response?.data?.message || "Invalid credentials",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50">
-      <div className="w-full max-w-md space-y-8 p-8 bg-background rounded-lg shadow-lg">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Welcome Back</h1>
-          <p className="text-muted-foreground">
-            Sign in to your SMS Bridge account
-          </p>
-        </div>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="john@example.com" 
-                required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+    <div className="container mx-auto p-6 flex items-center justify-center min-h-screen">
+      <Card className="w-full max-w-md p-6">
+        <h1 className="text-2xl font-bold text-center mb-6">Welcome Back</h1>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input
+              type="email"
+              required
+              disabled={loading}
+              value={formData.email}
+              onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+              placeholder="Enter your email"
+            />
           </div>
 
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="remember" className="rounded border-gray-300" />
-              <Label htmlFor="remember">Remember me</Label>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label>Password</Label>
+              <Link 
+                to="/reset-password" 
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
             </div>
-            <Link to="/forgot-password" className="text-primary hover:underline">
-              Forgot password?
-            </Link>
+            <Input
+              type="password"
+              required
+              disabled={loading}
+              value={formData.password}
+              onChange={(e) => setFormData(prev => ({...prev, password: e.target.value}))}
+              placeholder="Enter your password"
+            />
           </div>
 
-          <Button className="w-full" type="submit">
-            Sign In
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              'Login'
+            )}
           </Button>
         </form>
 
-        <div className="relative">
+        <div className="mt-6 text-center">
+          <Link to="/register" className="text-sm text-primary hover:underline">
+            Don't have an account? Register
+          </Link>
+        </div>
+
+        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t"></div>
           </div>
-          <div className="relative flex justify-center text-xs uppercase">
+          <div className="relative flex justify-center text-sm">
             <span className="bg-background px-2 text-muted-foreground">
               Or continue with
             </span>
@@ -104,36 +115,18 @@ export default function Login() {
         <Button 
           variant="outline" 
           className="w-full"
-          onClick={handleGoogleSignIn}
+          onClick={() => authService.loginWithGoogle()}
+          disabled={loading}
         >
-          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-            <path
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              fill="#4285F4"
-            />
-            <path
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              fill="#34A853"
-            />
-            <path
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              fill="#FBBC05"
-            />
-            <path
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              fill="#EA4335"
-            />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
+            <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335"/>
+            <path d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 16.0099 17.34 17.26 16.12 18.0949L19.93 21.1C22.1899 19.0099 23.49 15.92 23.49 12.275Z" fill="#4285F4"/>
+            <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 12C4.88501 11.2 5.01998 10.43 5.26498 9.70496L1.27002 6.60995C0.460022 8.22995 0 10.0599 0 12C0 13.9399 0.460022 15.7699 1.28497 17.3899L5.26498 14.2949Z" fill="#FBBC05"/>
+            <path d="M12.0004 24C15.2404 24 17.9654 22.935 19.9304 21.095L16.1204 18.09C15.0454 18.8449 13.6204 19.25 12.0004 19.25C8.8704 19.25 6.21537 17.14 5.2704 14.295L1.28539 17.39C3.25539 21.31 7.31039 24 12.0004 24Z" fill="#34A853"/>
           </svg>
           Continue with Google
         </Button>
-
-        <div className="text-center text-sm">
-          Don't have an account?{" "}
-          <Link to="/register" className="font-medium text-primary hover:underline">
-            Sign up
-          </Link>
-        </div>
-      </div>
+      </Card>
     </div>
   )
 }
