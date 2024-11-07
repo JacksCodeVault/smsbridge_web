@@ -1,4 +1,4 @@
-export const KEY_PREFIX = 'zahra'
+export const KEY_PREFIX = 'smsbridge'
 
 export const LOCAL_STORAGE_KEY = {
     USER: `${KEY_PREFIX}.user`,
@@ -10,9 +10,17 @@ export const API_ENDPOINTS = {
     AUTH: {
         LOGIN: '/auth/login',
         REGISTER: '/auth/register',
-        RESET_PASSWORD: '/auth/reset-password',
-        REQUEST_RESET: '/auth/request-password-reset',
-        VERIFY_EMAIL: '/auth/verify-email',
-        UPDATE_PROFILE: '/auth/profile'
+        VALIDATE_KEY: '/auth/validate-key',
+        DEVICE_AUTH: '/auth/device/auth'
+    },
+    MESSAGES: {
+        GET: '/messages',
+        SEND: '/messages',
+        BATCH: '/messages/batch',
+        DELIVERY_REPORTS: '/messages/delivery-reports'
+    },
+    DEVICES: {
+        LIST: '/devices',
+        API_KEYS: '/devices/api-keys'
     }
 }

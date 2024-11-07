@@ -2,26 +2,32 @@ import httpClient from '../lib/httpClient'
 
 export const gatewayService = {
     generateApiKey: () => 
-        httpClient.post('/auth/api-keys'),
+        httpClient.post('/devices/generate-key'),
     
     getApiKeyList: () => 
-        httpClient.get('/auth/api-keys'),
+        httpClient.get('/devices/api-keys'),
     
-    deleteApiKey: (id) => 
-        httpClient.delete(`/auth/api-keys/${id}`),
+    revokeApiKey: (keyId) => 
+        httpClient.post('/devices/revoke-key', { keyId }),
     
     getDeviceList: () => 
-        httpClient.get('/gateway/devices'),
+        httpClient.get('/devices'),
     
-    deleteDevice: (id) => 
-        httpClient.delete(`/gateway/devices/${id}`),
+    addDevice: (deviceData) =>
+        httpClient.post('/devices', deviceData),
     
-    sendSMS: (deviceId, { recipients, message }) => 
-        httpClient.post(`/gateway/devices/${deviceId}/sendSMS`, { 
-            recipients, 
-            message 
-        }),
+    updateDevice: (deviceId, data) =>
+        httpClient.put(`/devices/${deviceId}`, data),
     
-    getReceivedSMS: (deviceId) => 
-        httpClient.get(`/gateway/devices/${deviceId}/getReceivedSMS`)
+    deleteDevice: (deviceId) => 
+        httpClient.delete(`/devices/${deviceId}`),
+    
+    updateDeviceStatus: (deviceId, status) =>
+        httpClient.put(`/devices/${deviceId}/status`, { status }),
+    
+    verifyConnection: (deviceId) =>
+        httpClient.post(`/devices/${deviceId}/heartbeat`),
+    
+    syncDeviceMessages: (deviceId, messages) =>
+        httpClient.post(`/devices/${deviceId}/sync`, { messages })
 }
